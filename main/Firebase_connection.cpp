@@ -9,7 +9,7 @@
 using namespace std;
 
 //the different paths in firebase database
-const String pathdevice;
+String pathdevice;
 const String pathdata= "sensors/"+pathdevice;
 const String pathrequest= pathdevice +"/request";
 
@@ -26,8 +26,8 @@ void setUpFirebase(String mac_address){
 void sendingDataSensors(DeviceData& devicedata){
   JsonDocument json_file;
   //jsonify the data..
-  data["waterlevel"]= devicedata.getWaterLevel();
-  data["presence"]= devicedata.getIsCupDetected();
+  json_file["waterlevel"]= devicedata.getWaterLevel();
+  json_file["presence"]= devicedata.getIsCupDetected();
   String output;
   serializeJson(json_file, output);
   //..and send to firebase
