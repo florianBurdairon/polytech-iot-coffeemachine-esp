@@ -3,13 +3,17 @@
 #include <EEPROM.h>
 #include <Arduino.h>
 
-class EepromManager{
-    public:
-        bool begin(int size_memory);
-        void write(String data);
-        String get(char storedValue);
-    private:
-        EEPROMClass eepromClass;
-};
+class EEPROMManager{
 
+  public:
+    EEPROMManager(EEPROMClass eepromClass1,EEPROMClass eepromClass2);
+    bool beginEEPROMClasses(int size_memory1=256,int size_memory2=256);
+    void writeAndCommit(String receivedData1,String receivedData2);
+    void getEEPROMData(char &storedData1,char &storedData2);
+    bool clearEEPROM(int EEPROM_size);
+    
+  private:
+    EEPROMClass SSID;
+    EEPROMClass PASSWORD;
+};
 #endif
