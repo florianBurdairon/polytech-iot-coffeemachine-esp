@@ -6,27 +6,27 @@ EEPROMManager& EEPROMManager::getInstance() {
 }
 
 EEPROMManager::EEPROMManager(){
-  this->SSID = EEPROMClass SSID("wifi_ssid");
-  this->PASSWORD = EEPROMClass PASSWORD("wifi_password");
+  this->SSID = EEPROMClass("wifi_ssid");
+  this->PASSWORD = EEPROMClass("wifi_password");
 }
 
-bool EEPROMManager::begin(int size_ssid=256,int size_password=256) const{
-  return this->SSID.begin(size_ssid) && this->PASSWORD.begin(size_password);
+bool EEPROMManager::begin(int size_ssid,int size_password) {
+  return SSID.begin(size_ssid) && PASSWORD.begin(size_password);
 }
 
-void EEPROMManager::writeData(String ssid,String password) const{
-  this->SSID.writeString(0,ssid.c_str());
-  this->SSID.commit();
-  this->PASSWORD.writeString(0,password.c_str());
-  this->PASSWORD.commit();
+void EEPROMManager::writeData(String ssid,String password) {
+  SSID.writeString(0,ssid.c_str());
+  SSID.commit();
+  PASSWORD.writeString(0,password.c_str());
+  PASSWORD.commit();
 }
 
-void EEPROMManager::getData(char &storedData1,char &storedData2) const{
-  this->SSID.get(0,storedData1);
-  this->PASSWORD.get(0,storedData2);
+void EEPROMManager::getData(char storedData1[],char storedData2[]) { //char &storedData1
+  SSID.get(0,storedData1);
+  PASSWORD.get(0,storedData2);
 }
 
-bool EEPROMManager::clearData(int EEPROM_size) const{
+bool EEPROMManager::clearData(int EEPROM_size) {
   if(!EEPROM.begin(EEPROM_size)){
     Serial.println("Echec to begin eeprom");
     return false;
@@ -42,4 +42,4 @@ bool EEPROMManager::clearData(int EEPROM_size) const{
   return true;
 }
 
-EEPROMManager EEPROM = EEPROMManager::getInstance();
+EEPROMManager ManagerEEPROM = EEPROMManager::getInstance();
