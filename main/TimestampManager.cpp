@@ -1,25 +1,34 @@
 #include "TimestampManager.h"
 
-void TimestampManager::setConfigTime(long gmtOffset_sec = 0, int daylightOffset_sec = 0, const char* server1 = "pool.ntp.org") {
-    configTime(gmtOffset_sec, daylightOffset_sec, server1);
+TimestampManager& TimestampManager::getInstance(){
+  static TimestampManager instance;
+  return instance;
 }
 
-String TimestampManager::timestampGenerator() {
-    struct tm timeinfo;
-    if (!getLocalTime(&timeinfo)) {
-        Serial.println("Failed to obtain time");
-        return "";
-    }
-    char timestampmonth[10];
-    strftime(timestampmonth,10,"%B",&timeinfo);
-    return String(timeinfo.tm_hour) +":"
-            + String(timeinfo.tm_min) +":"
-            + String(timeinfo.tm_sec)+"|"
-            + String(timeinfo.tm_mday)+"/"
-            + String(timestampmonth)+"/"
-            + String(timeinfo.tm_year + 1900) ;
+TimestampManager::TimestampManager(int updateInterval = 60000, const char* server1 = "pool.ntp.org"){
+  WiFiUDP ntpUDP;
+  NTPClient timeClient(ntpUDP, server1, 0, updateInterval); // Update interval set to 60 seconds
+  this->timeclient = timeClient;
 }
 
+void TimestampManager::setConfigTime(int timezone=3600) {
+  this->timeclient.begin();
+  this->timeclient.setTimeOffset(timezone); //France is at GMT+1 so setTime to 3600
+}
+long TimestampManager::timestampGenerator() { //unsigned long ?
+  while(!this->timeclient.update()){
+    this->timeclient.forceUpdate();
+  }
+  Serial.print("formatted_date");
+  Serial.println(this->timeclient.getFormattedDate());
+  long epochTime = this->timeclient.getEpochTime();
+  long currentMillis = millis() % 1000;
+  Serial.print("Epoch Time: ");
+  Serial.print(epochTime);
+  Serial.print(".");
+  Serial.println(currentMillis);
+  return epochTime;//retourne un long qui est le temps en millisecondes écoule le 1er janvier 1970
+}
 
-
+TimestampManager ManagerTimestamp = TimestampManager::getInstance();
 

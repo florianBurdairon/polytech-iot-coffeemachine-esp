@@ -6,14 +6,17 @@
 class EEPROMManager{
 
   public:
-    EEPROMManager(EEPROMClass eepromClass1,EEPROMClass eepromClass2);
-    bool beginEEPROMClasses(int size_memory1=256,int size_memory2=256);
-    void writeAndCommit(String receivedData1,String receivedData2);
-    void getEEPROMData(char &storedData1,char &storedData2);
-    bool clearEEPROM(int EEPROM_size);
+    static EEPROMManager& getInstance();
+    bool begin(int size_ssid=256,int size_password=256) const;
+    void writeData(String ssid,String password) const;
+    void getData(char &storedData1,char &storedData2) const;
+    bool clearData(int EEPROM_size) const;
     
   private:
     EEPROMClass SSID;
     EEPROMClass PASSWORD;
+    EEPROMManager();
 };
+
+extern EEPROMManager EEPROM;
 #endif

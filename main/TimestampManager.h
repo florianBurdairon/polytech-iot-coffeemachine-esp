@@ -1,11 +1,17 @@
 #ifndef TIMESTAMPMANAGER_H
 #define TIMESTAMPMANAGER_H
 #include <Arduino.h>
-#include "time.h"
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 class TimestampManager {
-    public :
-        void setConfigTime(long gmtOffset_sec, int daylightOffset_sec, const char* server1);
-        String timestampGenerator();
+  public :
+    static TimestampManager& getInstance();
+    void setConfigTime(int timezone);
+    long timestampGenerator();
+  private :
+    TimestampManager();
 };
+
+extern TimestampManager ManagerTimestamp;
 #endif

@@ -1,27 +1,32 @@
 #include "EEPROMManager.h"
 
-EEPROMManager::EEPROMManager(EEPROMClass eepromClass1,EEPROMClass eepromClass2){
-  this->SSID = eepromClass1;
-  this->PASSWORD = eepromClass2;
+EEPROMManager& EEPROMManager::getInstance() {
+    static EEPROMManager instance;
+    return instance;
 }
 
-bool EEPROMManager::beginEEPROMClasses(int size_memory1=256,int size_memory2=256){
-  return this->SSID.begin(size_memory1) && this->PASSWORD.begin(size_memory2);
+EEPROMManager::EEPROMManager(){
+  this->SSID = EEPROMClass SSID("wifi_ssid");
+  this->PASSWORD = EEPROMClass PASSWORD("wifi_password");
 }
 
-void EEPROMManager::writeAndCommit(String receivedData1,String receivedData2){
-  this->SSID.writeString(0,receivedData1.c_str());
+bool EEPROMManager::begin(int size_ssid=256,int size_password=256) const{
+  return this->SSID.begin(size_ssid) && this->PASSWORD.begin(size_password);
+}
+
+void EEPROMManager::writeData(String ssid,String password) const{
+  this->SSID.writeString(0,ssid.c_str());
   this->SSID.commit();
-  this->PASSWORD.writeString(0,receivedData2.c_str());
+  this->PASSWORD.writeString(0,password.c_str());
   this->PASSWORD.commit();
 }
 
-void EEPROMManager::getEEPROMData(char &storedData1,char &storedData2){
+void EEPROMManager::getData(char &storedData1,char &storedData2) const{
   this->SSID.get(0,storedData1);
   this->PASSWORD.get(0,storedData2);
 }
 
-bool EEPROMManager::clearEEPROM(int EEPROM_size){
+bool EEPROMManager::clearData(int EEPROM_size) const{
   if(!EEPROM.begin(EEPROM_size)){
     Serial.println("Echec to begin eeprom");
     return false;
@@ -37,3 +42,4 @@ bool EEPROMManager::clearEEPROM(int EEPROM_size){
   return true;
 }
 
+EEPROMManager EEPROM = EEPROMManager::getInstance();
