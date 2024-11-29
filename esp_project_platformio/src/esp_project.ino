@@ -3,6 +3,9 @@
 #include "WifiManager.h"
 #include "TimestampManager.h"
 #include <Wire.h>
+#include "FirebaseManager.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/timers.h>
 
 
 //Define pin of captors
@@ -15,7 +18,19 @@
 //define param for water level
 unsigned char water_level_data[12]={0};
 #define ATTINY1_HIGH_ADDR   0x78
-TimerHandle_t xTimerHandle1;
+
+// Define the timer handle for firebase ping
+TimerHandle_t xFirebasePingTimerHandle;
+
+// Callback function to send data to Firebase
+void vFirebasePingTimerCallback(TimerHandle_t xTimer) {
+  DynamicJsonDocument deviceStatus(256);
+  deviceStatus["mac"] = ManagerWifi.mac;
+  deviceStatus["lastOnline"] = Timestamp.get();
+  deviceStatus["status"] = "ONLINE";
+  ManagerFirebase.sendData(deviceStatus, "devices", true);
+  Serial.println("Ping sent to Firebase");
+}
 
 // Callback to handle credentials
 void handleCredentials(const String ssid, const String password) {
@@ -66,6 +81,23 @@ void setup() {
       while (true);
     }
     Timestamp.begin();
+    // Create the timer
+    xFirebasePingTimerHandle = xTimerCreate(
+      "FirebasePingTimer",          // Timer name
+      pdMS_TO_TICKS(180000),    // Timer period in ticks (3 minutes)
+      pdTRUE,                   // Auto-reload
+      (void*)0,                 // Timer ID
+      vFirebasePingTimerCallback    // Callback function
+    );
+    // Check if the timer was created successfully
+    if (xFirebasePingTimerHandle != NULL) {
+      // Start the timer
+      if (xTimerStart(xFirebasePingTimerHandle, 0) != pdPASS) {
+        Serial.println("Failed to start the timer");
+      }
+    } else {
+      Serial.println("Failed to create the timer");
+    }
   }
   //about I2C
   Wire.begin();
