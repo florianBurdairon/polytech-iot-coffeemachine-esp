@@ -10,9 +10,17 @@ WifiManager::WifiManager() {
   WiFi.mode(WIFI_STA);
 }
 
-// ~ WifiManager::WifiManager() {
-//   WiFi.disconnect();
-// }
+void WifiManager::reconnectWifi(){
+  int countDelay = 0;
+  while(!checkConnected() || countDelay < 5 ){
+    WiFi.reconnect();
+    delay(1000);
+    countDelay++;
+  }
+  if(countDelay==5){
+    WiFi.disconnect();
+  }
+}
 
 void WifiManager::beginWifi(char ssid[], char password[]) {
   WiFi.begin(ssid, password);

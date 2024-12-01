@@ -7,7 +7,7 @@ class WifiManager {
   public :
     String mac;
     static WifiManager& getInstance();
-    //~WifiManager();
+    void reconnectWifi();
     void beginWifi(char ssid[], char password[]);
     bool checkConnected();
   private :

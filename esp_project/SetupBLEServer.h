@@ -15,10 +15,10 @@
 
 class SetupBLEServer {
 public:
-    static void start(const String& mac, const String& deviceName, std::function<void(const String&, const String&)> callback);
+    static void start(const String& mac, const String& deviceName, const bool isWifiReset, std::function<void(const String&, const String&)> callback);
 
 private:
-    static String serializeDeviceInfo(const String& name, const String& mac);
+    static String serializeDeviceInfo(const String& name, const String& mac, const bool isWifiReset);
 };
 
 class CustomCharacteristicCallbacks : public BLECharacteristicCallbacks {

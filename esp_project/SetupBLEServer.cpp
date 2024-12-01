@@ -1,11 +1,18 @@
 #include "SetupBLEServer.h"
 
-String SetupBLEServer::serializeDeviceInfo(const String& name, const String& mac) {
+String SetupBLEServer::serializeDeviceInfo(const String& name, const String& mac, const bool isWifiReset) {
     DynamicJsonDocument jsonFile(256);
     String deviceInfo;
     jsonFile["name"] = name;
     jsonFile["mac"] = mac;
-    jsonFile["status"] = "offline";
+    if (isWifiReset)
+    {
+        jsonFile["status"] = "RESET_WIFI";
+    }
+    else
+    {
+        jsonFile["status"] = "RESET";
+    }
     serializeJson(jsonFile, deviceInfo);
     return deviceInfo;
 }
@@ -26,9 +33,9 @@ void CustomCharacteristicCallbacks::onWrite(BLECharacteristic* characteristic) {
     }
 }
 
-void SetupBLEServer::start(const String& mac, const String& deviceName, std::function<void(const String&, const String&)> callback) {
+void SetupBLEServer::start(const String& mac, const String& deviceName, const bool isWifiReset, std::function<void(const String&, const String&)> callback) {
     Serial.println("Start server");
-    BLEDevice::init(deviceName);
+    BLEDevice::init(deviceName);//std::string(deviceName.c_str())
     BLEServer* server = BLEDevice::createServer();
 
     BLEService* service = server->createService(SERVICE_UUID);
@@ -42,7 +49,7 @@ void SetupBLEServer::start(const String& mac, const String& deviceName, std::fun
 
     characteristicWifiSetup->setCallbacks(new CustomCharacteristicCallbacks(callback));
 
-    String deviceInfo = serializeDeviceInfo(deviceName, mac);
+    String deviceInfo = serializeDeviceInfo(deviceName, mac, isWifiReset);
     Serial.println(deviceInfo);
     characteristicDeviceInfo->setValue((uint8_t*)deviceInfo.c_str(), deviceInfo.length());
 
