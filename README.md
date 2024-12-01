@@ -31,7 +31,7 @@ Concernant le matériel utilisé pour réaliser notre machine connectée, il nou
  - une machine à café Senseo Philips HD7825 (apport personnel)
  - Micro-contrôleur de type ESP32 s3 avec 8Mo de mémoire flash équipé BLE + Wifi
  - Capteur de niveau d’eau Grove pour Arduino
- - Détecteur IR Distance Interrupter afin de détecter la présence de tasses en dessous du bec verseur
+ - Détecteur IR Distance Interrupter v1.2 afin de détecter la présence de tasses en dessous du bec verseur
  - un optocoupleur (réalisé sur demande à Mr Buathier) pour permettre la lecture des états de la led intégrée à la machine à café, ceci afin de ne pas avoir de problème de couplage avec l’alimentation de la machine à café lors du setting de l’ESP avec nos PC.
  - 3 relais de 5V pour les boutons  : 
     - ON/OFF
