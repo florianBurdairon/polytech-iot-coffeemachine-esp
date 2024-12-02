@@ -33,9 +33,9 @@ JsonDocument FirebaseManager::getData(String path, bool useMacAddress = true) {
     return json_file;
 }
 
-bool FirebaseManager::checkConnected() {
-    return firebaseData.beginStream(firebaseData, FIREBASE_DB_URL, FIREBASE_API_KEY);
-}
+// bool FirebaseManager::checkConnected() {
+//     return firebaseData.beginStream(firebaseData, FIREBASE_DB_URL, FIREBASE_API_KEY);
+// }
 
 bool FirebaseManager::removeData(String path, bool useMacAddress = true) {
     if (useMacAddress) {

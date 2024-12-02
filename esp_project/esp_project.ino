@@ -7,7 +7,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
 
-
 //Define pin of captors
 #define LED_PIN A2 //led linked to the finite state of coffee machine : fix, short blinking, fast blinking
 #define INFRA_PIN A4 //for the infrared presence captor OK
@@ -27,9 +26,9 @@ char storedPassword [64];
 
 //define the interruption function for IR cup detector
 void IRAM_ATTR handleCupDetectedInterrupt(){
-  DynamicJsonDocument cupCaptor(256);
+  JsonDocument cupCaptor;
   bool value;
-  if(analogRead(INFRA_PIN) == 0){
+  if(analogRead(INFRA_PIN) <= 100){
     value = true;
   }
   else{
@@ -44,10 +43,11 @@ void IRAM_ATTR handleCupDetectedInterrupt(){
 TimerHandle_t xFirebasePingTimerHandle;
 TimerHandle_t xCoffeeTaskTimerHandle;
 TimerHandle_t xWaterLevelTimerHandle;
+TimerHandle_t xCalculatedLedFrequencyTimerHandle;
 
 // Callback function to send data to Firebase
 void vFirebasePingTimerCallback(TimerHandle_t xTimer) {
-  DynamicJsonDocument deviceStatus(256);
+  JsonDocument deviceStatus;
   deviceStatus["mac"] = ManagerWifi.mac;
   deviceStatus["lastOnline"] = Timestamp.get();
   deviceStatus["status"] = "ONLINE";
@@ -56,73 +56,232 @@ void vFirebasePingTimerCallback(TimerHandle_t xTimer) {
 }
 //Callback function to send waterlevel value to Firebase
 void vWaterLevelTimerCallback(TimerHandle_t xTimer){
-  DynamicJsonDocument waterLevel(256);
+  JsonDocument waterLevel;
   waterLevel["waterLevel"] = convertWaterSensorValues();
   ManagerFirebase.sendData(waterLevel, "sensors", true);
   Serial.println("Water level sent to Firebase");
 }
-//Callback function to get led state and send it to Firebase
-void vCoffeeTaskTimerCallback(TimerHandle_t xTimer){
-  JsonDocument currentRequest = ManagerFirebase.getData("requests/"+ManagerWifi.mac+"/current", false);
-  DynamicJsonDocument ledState(256);
-  String status;
-  switch (expression)
-  {
-  case /* constant-expression */:
-    status = "INITIALIZING";
-    //process to activate coffee machine with the button
 
-    break;
-  case :
-    status ="WARMING";
-    break;
-  case :
-    status ="FILLING";
-    break;
-  case :
-    status ="COLLECTING";
-    break;  
-  default:
-    break;
+//Callback function and variables to get led state and calculate the frequency for changing status request in Firebase
+volatile int stateChangeCount = 0;
+float frequency = 0.0f;
+
+// Callback function to check LED state and count the number of state changes
+void IRAM_ATTR checkLEDState() {
+  static bool lastState = LOW;
+  bool currentState = digitalRead(LED_PIN);
+  if (currentState != lastState) {
+    stateChangeCount++;
+    lastState = currentState;
   }
-  ledState["status"] = status;
-  ManagerFirebase.sendData(ledState, "requests/"+ManagerWifi.mac+"/current", false);
-  Serial.println("Led state sent to Firebase");
-  ManagerFirebase.removeData("requests/"+ManagerWifi.mac+"/current", false);
-  Serial.println("request current remove in Firebase");
-  //create the log file associated
-  DynamicJsonDocument log(256);
-  switch (expression)
-  { 
-    case /* constant-expression */:
-      log["status"] = "DONE";
-      break;
-    case :
-      log["status"] = "ERROR_WATER";
-      break;
-    case :
-      log["status"] = "ERROR_CUP";
-      break;
-    case :
-      log["status"] = "ERROR_TIMEOUT";
-      break; 
-    case :
-      log["status"] = "ERROR_OFFLINE";
-    break; 
-    case :
-      log["status"] = "ERROR_WARMING";
-    break; 
-    case :
-      log["status"] = "ERROR_FILLING";
-    break; 
-    default:  
-      log["status"] = "SUCCESS";
-      break;
+}
+// Callback function to calculate the LED frequency
+void calculateLedFrequency(TimerHandle_t xTimer){
+  frequency = (stateChangeCount / 2.0f ); // Divide by 2 because each cycle has two state changes
+  stateChangeCount = 0; // Reset the count for the next interval
+}
+
+bool isCoffeeMachineReady(){
+  //check if the coffee machine is ready to make coffee
+  return frequency == 0.0f && digitalRead(LED_PIN)==HIGH;
+}
+//action to do with the coffee machine
+bool doRequestedAction(String action){
+  if(action.equalsIgnoreCase("1CUP")){
+    Serial.println("Start 1 coffee");
+    digitalWrite(BTN_1COFFEE_PIN, HIGH);
+    delay(500);
+    digitalWrite(BTN_1COFFEE_PIN, LOW);
+    return true;
   }
-  log[action]= currentRequest["action"];
-  log["timestamp"] = Timestamp.get();
-  log["uid"] = currentRequest["uid"];
-  ManagerFirebase.sendData(log, "logs/"+ userUID + toString(Timestamp.get()), false);
+  else if(action.equalsIgnoreCase("2CUP")){
+    Serial.println("Start 2 coffees");
+    digitalWrite(BTN_2COFFEE_PIN, HIGH);
+    delay(500);
+    digitalWrite(BTN_2COFFEE_PIN, LOW);
+    return true;
+  }
+  return false;
+}
+void transformRequest(JsonDocument macRequest){
+  //exchange the current by the next request
+  JsonDocument nextRequest;
+  long timesTamp = macRequest["next"]["timestamp"];
+  if(Timestamp.get() - timesTamp < 0){
+    return;
+  }
+  nextRequest["current"] = macRequest["next"];
+  //take the first item of the list of requests if list isn't empty in order to transform it in the next request
+  JsonObject list = macRequest["list"];
+  if(list.size() > 0){
+    nextRequest["next"] = list.begin()->value(); 
+    //and then remove it from the list
+    JsonObject::iterator it = list.begin();
+    list.remove(it->key()); 
+    if(list.size() > 0) {
+      nextRequest["list"] = list;
+    }
+    else {
+      nextRequest["list"] = "null";
+    }
+  }
+  else{//else set the next request to null
+    nextRequest["next"] = "null";
+  }  
+  ManagerFirebase.sendData(nextRequest, "requests/"+ ((String)macRequest["mac"]), false);
+}
+
+//Callback function to handle the coffee requests
+void vCoffeeTaskTimerCallback(TimerHandle_t xTimer) {
+  JsonDocument macRequest = ManagerFirebase.getData("requests/", true);//get the current, the list and the next requests
+  JsonDocument nextRequest;
+  macRequest["next"]["status"] = "INITIALISING";
+  nextRequest["current"] = macRequest["next"];
+  ManagerFirebase.sendData(nextRequest,"requests/"+((String)macRequest["current"]["mac"]), false);
+  
+  JsonDocument log;
+
+  // Check if there is a current request
+  if( ((String)macRequest["current"]).equalsIgnoreCase("null")){
+    // Check next request
+    if( ((String)nextRequest["current"]).equalsIgnoreCase("null")){
+      transformRequest(macRequest);
+    }
+    return;
+  }
+
+  // Check if the current request is initialising
+  if(((String)macRequest["current"]["status"]).equalsIgnoreCase("INITIALISING")) {
+    if(analogRead(INFRA_PIN) <= 100 && convertWaterSensorValues() >= 0.1) {
+      JsonDocument setRequest;
+      setRequest = macRequest["current"];
+      setRequest["status"] = "WARMING";
+      ManagerFirebase.sendData(setRequest, "requests/"+((String)macRequest["current"]["mac"])+"/current", false);
+    }
+    else if(analogRead(INFRA_PIN) > 100) {
+      // No cup detected
+      // Log the request
+      JsonDocument logRequest;
+      logRequest = macRequest["current"];
+      logRequest["status"] = "ERROR_CUP";
+      ManagerFirebase.sendData(logRequest, "logs/"+((String)macRequest["current"]["uid"])+"/"+((String)macRequest["current"]["timestamp"]), false);
+      
+      // Remove the current request
+      JsonDocument clearRequest;
+      clearRequest["current"] = "null";
+      ManagerFirebase.sendData(clearRequest, "requests/", true);
+    }
+    else {
+      // Not enough water
+      // Log the request
+      JsonDocument logRequest;
+      logRequest = macRequest["current"];
+      logRequest["status"] = "ERROR_WATER";
+      ManagerFirebase.sendData(logRequest, "logs/"+((String)macRequest["current"]["uid"])+"/"+((String)macRequest["current"]["timestamp"]), false);
+      
+      // Remove the current request
+      JsonDocument clearRequest;
+      clearRequest["current"] = "null";
+      ManagerFirebase.sendData(clearRequest, "requests/", true);
+    }
+    return;
+  }
+
+  // Check if the current request is warming
+  if( ((String)macRequest["current"]["status"]).equalsIgnoreCase("WARMING")) {
+    Serial.println("Start machine");
+    digitalWrite(BTN_ONOFF_PIN, HIGH); //start machine by activating the button("relais ON/OFF")
+    delay(500);
+    digitalWrite(BTN_ONOFF_PIN, LOW);
+    bool isReady = false;
+    int timeout = millis() + 60000;
+    while(!isReady && millis() < timeout) {
+      isReady = isCoffeeMachineReady();
+    }
+    if (isReady) {
+      JsonDocument setRequest;
+      setRequest = macRequest["current"];
+      setRequest["status"] = "FILLING";
+      ManagerFirebase.sendData(setRequest, "requests/"+((String)macRequest["current"]["mac"])+"/current", false);
+    }
+    else {
+      // Error warming
+      // Log the request
+      JsonDocument logRequest;
+      logRequest = macRequest["current"];
+      logRequest["status"] = "ERROR_WARMING";
+      ManagerFirebase.sendData(logRequest, "logs/"+((String)macRequest["current"]["uid"])+"/"+((String)macRequest["current"]["timestamp"]), false);
+      
+      // Remove the current request
+      JsonDocument clearRequest;
+      clearRequest["current"] = "null";
+      ManagerFirebase.sendData(clearRequest, "requests/", true);
+    }
+    return;
+  }
+
+  // Check if the current request is filling
+  if(((String)macRequest["current"]["status"]).equalsIgnoreCase("FILLING")) {
+    doRequestedAction(((String)macRequest["current"]["action"]));
+    bool isReady = false;
+    long timeout = millis() + 60000;
+    while(!isReady && millis() < timeout) {
+      isReady = isCoffeeMachineReady();
+    }
+    if(isReady) {
+      JsonDocument setRequest;
+      setRequest = macRequest["current"];
+      setRequest["status"] = "COLLECTING";
+      ManagerFirebase.sendData(setRequest, "requests/"+((String)macRequest["current"]["mac"])+"/current", false);
+    }
+    else {
+      // Error filling
+      // Log the request
+      JsonDocument logRequest;
+      logRequest = macRequest["current"];
+      logRequest["status"] = "ERROR_FILLING";
+      ManagerFirebase.sendData(logRequest, "logs/"+((String)macRequest["current"]["uid"])+"/"+((String)macRequest["current"]["timestamp"]), false);
+      
+      // Remove the current request
+      JsonDocument clearRequest;
+      clearRequest["current"] = "null";
+      ManagerFirebase.sendData(clearRequest, "requests/", true);
+    }
+    return;
+  }
+
+  // Check if the current request is collecting
+  if(((String)macRequest["current"]["status"]).equalsIgnoreCase("COLLECTING")) {
+    digitalWrite(BTN_ONOFF_PIN, HIGH); //Turn off the machine
+    delay(500);
+    digitalWrite(BTN_ONOFF_PIN, LOW);
+    while(analogRead(INFRA_PIN) <= 100) {
+      // Wait for cup to be removed
+    }
+    Serial.println("Cup detected");
+    
+    // Log the request
+    JsonDocument logRequest;
+    logRequest = macRequest["current"];
+    logRequest["status"] = "SUCCESS";
+    ManagerFirebase.sendData(logRequest, "logs/"+((String)macRequest["current"]["uid"])+"/"+((String)macRequest["current"]["timestamp"]), false);
+    
+    // Remove the current request
+    JsonDocument clearRequest;
+    clearRequest["current"] = "null";
+    ManagerFirebase.sendData(clearRequest, "requests/", true);
+    return;
+  }
+  
+  // Check if the current request is taking too long
+  long timestamp = macRequest["current"]["timestamp"];
+  if(Timestamp.get() - timestamp > 30){//error timeout of 30s
+    macRequest["current"]["status"] = "ERROR_TIMEOUT";
+    JsonDocument setRequest;
+    setRequest[((String)timestamp)]= macRequest["current"];
+    ManagerFirebase.sendData(setRequest, "logs/"+((String)macRequest["current"]["uid"]), false);
+    return;
+  }
 }
 
 // Callback to handle credentials
@@ -164,7 +323,7 @@ void WaterLevelReadingSection(){
   delay(10);
 }
 
-uint8_t convertWaterSensorValues(){
+float convertWaterSensorValues(){
   for(;;){
     uint32_t touch_val = 0;
     uint8_t trig_section = 0;
@@ -207,7 +366,7 @@ void setup() {
     Serial.println("1st setup so start with BLE");
     //SetupBLEServer::start(ManagerWifi.mac, getDeviceName(), false, handleCredentials);
     handleCredentials(TEST_SSID,TEST_PASSWORD);
-    //while (true);
+    while (true);
   }
   else{
     //not the 1st setup so start directly with Wifi
@@ -227,14 +386,15 @@ void setup() {
     pinMode(BTN_ONOFF_PIN,OUTPUT);
     pinMode(BTN_1COFFEE_PIN,OUTPUT);
     pinMode(BTN_2COFFEE_PIN,OUTPUT);
+    
     //about IR cup detector that detect cup under ~17cm of the captor
     attachInterrupt(digitalPinToInterrupt(INFRA_PIN),handleCupDetectedInterrupt,CHANGE);
-
+    attachInterrupt(digitalPinToInterrupt(LED_PIN),checkLEDState,CHANGE);
     // Create timers
     //for ping to firebase ("the heart of the ESP")
     xFirebasePingTimerHandle = xTimerCreate(
       "FirebasePingTimer",          // Timer name
-      pdMS_TO_TICKS(180000),    // Timer period in ticks (3 minutes)
+      pdMS_TO_TICKS(60000),    // Timer period in ticks (1 minute)
       pdTRUE,                   // Auto-reload
       (void*)0,                 // Timer ID
       vFirebasePingTimerCallback    // Callback function
@@ -265,62 +425,43 @@ void setup() {
       Serial.println("Failed to create the waterlevel timer");
     }
 
-    //for cooffe task get and ping to firebase
+    //for measuring led frequency
+    xCalculatedLedFrequencyTimerHandle = xTimerCreate(
+      "LedFrequencyTimer",
+      pdMS_TO_TICKS(1000),
+      pdTRUE,
+      ( void * ) 0,
+      calculateLedFrequency
+    );
+    xTimerStart(xCalculatedLedFrequencyTimerHandle, 0);
+    // Check if the timer was created successfully
+    if (xCalculatedLedFrequencyTimerHandle != NULL) {
+      // Start the timer
+      if (xTimerStart(xCalculatedLedFrequencyTimerHandle, 0) != pdPASS) {
+        Serial.println("Failed to start the led frequency timer");
+      }
+    } else {
+      Serial.println("Failed to create the led frequency timer");
+    }
+
+    //for coffee task get and ping to firebase
     xCoffeeTaskTimerHandle = xTimerCreate(
       "xCoffeeTaskTimer",          
-      pdMS_TO_TICKS(10000),    // 
+      pdMS_TO_TICKS(30000),    // 
       pdTRUE,                  
       (void*)0,                 
       vCoffeeTaskTimerCallback   
     );
+    if (xCoffeeTaskTimerHandle != NULL) {
+      if (xTimerStart(xCoffeeTaskTimerHandle, 0) != pdPASS) {
+        Serial.println("Failed to start the coffee task timer");
+      }
+    } else {
+      Serial.println("Failed to create the coffee task timer");
+    }
   }
 }
 
-
-/// @brief //define the sequence of the coffee machine
 void loop() {
-    Serial.println(Timestamp.get());
-    delay(1000);
-    //define sequence of the coffee machine
-    if (Serial.available() > 0) {
-    String monitor_command = Serial.readStringUntil('\n');
-    monitor_command.trim();
-  
-    if (monitor_command.equalsIgnoreCase("ON")){
-      Serial.println("Start machine");
-      digitalWrite(BTN_ONOFF_PIN, HIGH); 
-    }
-    else if (monitor_command.equalsIgnoreCase("OFF")){
-      Serial.println("Stop machine");
-      digitalWrite(BTN_ONOFF_PIN, LOW); //not necessary, just wait until the time (30min) of wake down and check when launch ; now need to check led frequencies
-    }
-    else if (monitor_command.equalsIgnoreCase("1coffee")){
-      if(analogRead(INFRA_PIN) == 0){
-        Serial.println("Cup detected");
-        Serial.println("Start 1 coffee");
-        digitalWrite(BTN_1COFFEE_PIN, HIGH);
-        delay(1500);
-        digitalWrite(BTN_1COFFEE_PIN, LOW);
-        Serial.println("BTN 1 coffee down");
-      }
-      else{
-        Serial.println("No cup detected : please add one to serve a coffee");
-      }
-    }
-    else{
-      if(analogRead(INFRA_PIN) == 0){
-        Serial.println("Cup detected");
-        Serial.println("Start 2 coffees");
-        digitalWrite(BTN_2COFFEE_PIN, HIGH);
-        delay(1500);
-        digitalWrite(BTN_2COFFEE_PIN, LOW);
-        Serial.println("BTN 2 coffees down");
-      }
-      else{
-        Serial.println("No cup detected : please add two to serve 2 coffees");
-      }
-    }
-  }
 
-
-
+}
