@@ -35,7 +35,7 @@ void CustomCharacteristicCallbacks::onWrite(BLECharacteristic* characteristic) {
 
 void SetupBLEServer::start(const String& mac, const String& deviceName, const bool isWifiReset, std::function<void(const String&, const String&)> callback) {
     Serial.println("Start server");
-    BLEDevice::init(std::string(deviceName.c_str()));
+    BLEDevice::init(deviceName);//std::string(deviceName.c_str())
     BLEServer* server = BLEDevice::createServer();
 
     BLEService* service = server->createService(SERVICE_UUID);

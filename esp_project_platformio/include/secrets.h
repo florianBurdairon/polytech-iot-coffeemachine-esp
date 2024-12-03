@@ -3,9 +3,10 @@
 #define FIREBASE_API_KEY "AIzaSyD52wnj6jGeoI5EgnA9gkJwyfjXf9GNc0o"
 
 //for wifi connection test
-#define TEST_SSID "Galaxy A42 5G8288" 
+#define TEST_SSID "galaxya425g8288" 
 #define TEST_PASSWORD "avmw4585"
 
-//for bluetooth connection
-#define SERVICE_UUID        "12345678-1234-1234-1234-123456789abc" 
-#define CHARACTERISTIC_UUID "87654321-4321-4321-4321-cba987654321"
+// UUIDs for BLE service and characteristics
+#define SERVICE_UUID "e29834b1-fdbe-4780-84f2-f3a87d0e97fb"
+#define WIFI_CREDENTIAL_UUID "dddbf1dc-63f8-4146-bbee-523b47143be8"
+#define DEVICE_INFO_UUID "f5609179-c8f5-49b9-8f88-f4b86ed493e4"

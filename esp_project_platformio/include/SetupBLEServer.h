@@ -7,11 +7,7 @@
 #include <ArduinoJson.h>
 #include <functional>
 #include <string>
-
-// UUIDs for BLE service and characteristics
-#define SERVICE_UUID "e29834b1-fdbe-4780-84f2-f3a87d0e97fb"
-#define WIFI_CREDENTIAL_UUID "dddbf1dc-63f8-4146-bbee-523b47143be8"
-#define DEVICE_INFO_UUID "f5609179-c8f5-49b9-8f88-f4b86ed493e4"
+#include "secrets.h"
 
 class SetupBLEServer {
 public:
