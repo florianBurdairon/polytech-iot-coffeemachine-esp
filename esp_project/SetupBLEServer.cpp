@@ -1,18 +1,17 @@
 #include "SetupBLEServer.h"
 
-String SetupBLEServer::serializeDeviceInfo(const String& name, const String& mac, const bool isWifiReset) {
+String SetupBLEServer::serializeDeviceInfo(const String& name, const String& mac, const bool wifiReset) {
     DynamicJsonDocument jsonFile(256);
     String deviceInfo;
     jsonFile["name"] = name;
     jsonFile["mac"] = mac;
-    if (isWifiReset)
-    {
-        jsonFile["status"] = "RESET_WIFI";
+    if(wifiReset) {
+      jsonFile["status"] = "RESET_WIFI";
     }
-    else
-    {
-        jsonFile["status"] = "RESET";
+    else {
+      jsonFile["status"] = "RESET";
     }
+    jsonFile["lastOnline"] = 0;
     serializeJson(jsonFile, deviceInfo);
     return deviceInfo;
 }
@@ -33,24 +32,25 @@ void CustomCharacteristicCallbacks::onWrite(BLECharacteristic* characteristic) {
     }
 }
 
-void SetupBLEServer::start(const String& mac, const String& deviceName, const bool isWifiReset, std::function<void(const String&, const String&)> callback) {
+void SetupBLEServer::start(const String& mac, const String& deviceName, const bool wifiReset, std::function<void(const String&, const String&)> callback) {
     Serial.println("Start server");
-    BLEDevice::init(deviceName);//std::string(deviceName.c_str())
+    BLEDevice::init(deviceName);
     BLEServer* server = BLEDevice::createServer();
 
     BLEService* service = server->createService(SERVICE_UUID);
 
+    // Characterisitc for wifi credential (READ/WRITE)
     BLECharacteristic* characteristicWifiSetup = service->createCharacteristic(
         WIFI_CREDENTIAL_UUID,
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    characteristicWifiSetup->setCallbacks(new CustomCharacteristicCallbacks(callback));
+
+    // Characteristic for device info (READ)
+    String deviceInfo = serializeDeviceInfo(deviceName, mac, wifiReset);
+    Serial.println(deviceInfo);
     BLECharacteristic* characteristicDeviceInfo = service->createCharacteristic(
         DEVICE_INFO_UUID,
         BLECharacteristic::PROPERTY_READ);
-
-    characteristicWifiSetup->setCallbacks(new CustomCharacteristicCallbacks(callback));
-
-    String deviceInfo = serializeDeviceInfo(deviceName, mac, isWifiReset);
-    Serial.println(deviceInfo);
     characteristicDeviceInfo->setValue((uint8_t*)deviceInfo.c_str(), deviceInfo.length());
 
     service->start();

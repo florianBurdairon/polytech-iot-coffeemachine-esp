@@ -9,8 +9,6 @@ class TimestampManager {
     static TimestampManager& getInstance();
     void begin();
     long get();
-  private :
-    TimestampManager();
 };
 
 extern TimestampManager Timestamp;
