@@ -10,9 +10,7 @@
 //     void reconnectWifi();
 //     void beginWifi(char ssid[], char password[]);
 //     bool checkConnected();
-//   private :
+//   private:
 //     WifiManager();
 // };
-
-// extern WifiManager ManagerWifi;
 // #endif

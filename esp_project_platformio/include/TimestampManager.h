@@ -1,17 +1,15 @@
-// #ifndef TIMESTAMPMANAGER_H
-// #define TIMESTAMPMANAGER_H
-// #include <Arduino.h>
-// #include <NTPClient.h>
-// #include <WiFiUdp.h>
+#ifndef TIMESTAMPMANAGER_H
+#define TIMESTAMPMANAGER_H
+#include <Arduino.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
-// class TimestampManager {
-//   public :
-//     static TimestampManager& getInstance();
-//     void begin();
-//     long get();
-//   private :
-//     TimestampManager();
-// };
+class TimestampManager {
+  public :
+    static TimestampManager& getInstance();
+    void begin();
+    long get();
+};
 
-// extern TimestampManager Timestamp;
-// #endif
+extern TimestampManager Timestamp;
+#endif

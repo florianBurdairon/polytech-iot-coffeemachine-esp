@@ -1,28 +1,28 @@
-// #include "TimestampManager.h"
+#include "TimestampManager.h"
 
-// WiFiUDP ntpUDP;
-// NTPClient timeClient(ntpUDP);
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP,"pool.ntp.org", 0, 10000);
 
-// TimestampManager& TimestampManager::getInstance(){
-//   static TimestampManager instance;
-//   return instance;
-// }
+TimestampManager& TimestampManager::getInstance(){
+  static TimestampManager instance;
+  return instance;
+}
 
-// TimestampManager::TimestampManager(){
-//   int updateInterval = 10000; 
-//   const char* server1 = "pool.ntp.org";
-// }
+TimestampManager::TimestampManager(){
+  //int updateInterval = 10000; 
+  //const char* server1 = "pool.ntp.org";
+}
 
-// void TimestampManager::begin() {
-//   timeClient.begin();
-// }
-// long TimestampManager::get() {
-//   while(!timeClient.update()){
-//     timeClient.forceUpdate();
-//   }
-//   long epochTime = timeClient.getEpochTime();
-//   return epochTime;
-// }
+void TimestampManager::begin() {
+  timeClient.begin();
+}
+long TimestampManager::get() {
+  while(!timeClient.update()){
+    timeClient.forceUpdate();
+  }
+  long epochTime = timeClient.getEpochTime();
+  return epochTime;
+}
 
-// TimestampManager Timestamp = TimestampManager::getInstance();
+TimestampManager Timestamp = TimestampManager::getInstance();
 

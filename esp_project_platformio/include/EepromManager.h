@@ -1,23 +1,13 @@
-#ifndef EEPROM_MANAGER_H
-#define EEPROM_MANAGER_H
 #include <EEPROM.h>
-#include <Arduino.h>
 
-class EEPROMManager{
+#define EEPROM_SIZE 512            // Define EEPROM size
+#define START_ADDRESS 0            // Starting address in EEPROM
+#define STRING_MARKER "SAVED"      // Marker to check if strings are saved
+#define MAX_STRING_LENGTH 100      // Maximum length of each string
 
-  public:
-    EEPROMClass SSID;
-    EEPROMClass PASSWORD;
-    static EEPROMManager& getInstance();
-    bool begin(int size_ssid,int size_password) ;
-    void writeData(String ssid,String password) ;
-    void getData(char storedData1[],char storedData2[]) ;
-    bool clearData(int EEPROM_size) ;
-    
-  private:
-    //EEPROMClass SSID;
-    EEPROMManager();
-};
 
-extern EEPROMManager ManagerEEPROM;
-#endif
+String readStringFromEEPROM(int startAddress);
+void writeStringToEEPROM(int startAddress, const String& value);
+bool areStringsSaved();
+void saveStringsToEEPROM(const String& str1, const String& str2);
+void clearEEPROM();

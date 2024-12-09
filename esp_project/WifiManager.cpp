@@ -12,7 +12,7 @@
 
 // void WifiManager::reconnectWifi(){
 //   int countDelay = 0;
-//   while(!checkConnected() || countDelay < 5 ){
+//   while(!checkConnected() || countDelay <= 5 ){
 //     WiFi.reconnect();
 //     delay(1000);
 //     countDelay++;
@@ -35,4 +35,3 @@
 //   return WiFi.status() == WL_CONNECTED ;
 // }
 
-// WifiManager ManagerWifi = WifiManager::getInstance();

@@ -1,45 +1,45 @@
 #include "EEPROMManager.h"
 
-EEPROMManager& EEPROMManager::getInstance() {
-    static EEPROMManager instance;
-    return instance;
-}
-
-EEPROMManager::EEPROMManager(){
-  this->SSID = EEPROMClass("wifi_ssid");
-  this->PASSWORD = EEPROMClass("wifi_password");
-}
-
-bool EEPROMManager::begin(int size_ssid,int size_password) {
-  return SSID.begin(size_ssid) && PASSWORD.begin(size_password);
-}
-
-void EEPROMManager::writeData(String ssid,String password) {
-  SSID.writeString(0,ssid.c_str());
-  SSID.commit();
-  PASSWORD.writeString(0,password.c_str());
-  PASSWORD.commit();
-}
-
-void EEPROMManager::getData(char storedData1[],char storedData2[]) { //char &storedData1
-  SSID.get(0,storedData1);
-  PASSWORD.get(0,storedData2);
-}
-
-bool EEPROMManager::clearData(int EEPROM_size) {
-  if(!EEPROM.begin(EEPROM_size)){
-    Serial.println("Echec to begin eeprom");
-    return false;
+void writeStringToEEPROM(int startAddress, const String& value) {
+  int len = value.length();
+  EEPROM.write(startAddress, len);  // Save string length at the start
+  for (int i = 0; i < len; i++) {
+    EEPROM.write(startAddress + 1 + i, value[i]);  // Write string character by character
   }
-  else{
-    for(int i=0; i< EEPROM_size; i++){
-      EEPROM.write(i, 0);
-      Serial.printf("EEPROM %i reset",i);
-    }
-    EEPROM.commit();
-    Serial.println("EEPROM reset");
-  }
-  return true;
 }
 
-EEPROMManager ManagerEEPROM = EEPROMManager::getInstance();
+String readStringFromEEPROM(int startAddress) {
+  int len = EEPROM.read(startAddress);  // Read string length
+  char data[len + 1];
+  for (int i = 0; i < len; i++) {
+    data[i] = EEPROM.read(startAddress + 1 + i);  // Read character by character
+  }
+  data[len] = '\0';  // Null-terminate the string
+  return String(data);
+}
+
+bool areStringsSaved() {
+  char marker[sizeof(STRING_MARKER)];
+  for (int i = 0; i < sizeof(marker); i++) {
+    marker[i] = EEPROM.read(START_ADDRESS + i);
+  }
+  return strcmp(marker, STRING_MARKER) == 0;
+}
+
+void saveStringsToEEPROM(const String& str1, const String& str2) {
+  for (int i = 0; i < sizeof(STRING_MARKER); i++) {
+    EEPROM.write(START_ADDRESS + i, STRING_MARKER[i]);  // Write the marker
+  }
+  writeStringToEEPROM(START_ADDRESS + sizeof(STRING_MARKER), str1);  // Save first string
+  writeStringToEEPROM(START_ADDRESS + sizeof(STRING_MARKER) + 1 + MAX_STRING_LENGTH, str2);  // Save second string
+  
+  EEPROM.commit();  // Save changes to EEPROM
+}
+
+void clearEEPROM() {
+  for (int i = 0; i < EEPROM_SIZE; i++) {
+    EEPROM.write(i, 0);  // Write 0 to each byte
+  }
+  EEPROM.commit();  // Ensure changes are saved
+  Serial.println("EEPROM cleared.");
+}
