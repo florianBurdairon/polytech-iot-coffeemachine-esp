@@ -72,8 +72,6 @@ void setup() {
     Serial.println("Connecting to wifi...");
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
-    //WiFi.begin("galaxya425g8288","avmw4585");
-    //WiFi.begin("S24 Ultra de Florian","xarphax07");
     delay(1000);
 
     checkWifi();
