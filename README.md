@@ -1,4 +1,7 @@
 # Projet IoT : Coffee Machine
+
+> Voici le lien du dépôt Gitlab contenant le rapport complet (README.md) : https://forge.univ-lyon1.fr/fise-24-25-iot/blumet_burdairon_coffeemachine
+
 ## Partie microcontrôleur
 ### Liste de matériels utilisé
 - Microcontrôleur ESP32 s3 NoPSRAM 8Mo Flash équipé BLE + Wifi
