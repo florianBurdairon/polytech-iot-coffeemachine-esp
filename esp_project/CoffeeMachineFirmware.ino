@@ -55,7 +55,6 @@ void setup() {
   EEPROM.begin(EEPROM_SIZE);
   Wire.begin();
   //clearEEPROM();
-  //saveStringsToEEPROM("galaxya425g8288","avmw4585");
   deviceName = getNameCoffeeMachine();
 
   // Strings saved in EEPROM
@@ -325,16 +324,16 @@ void requestTask(void* parameter) {
 
         // Check if the request is too old
         long timestamp = current["timestamp"];
-        // if(Timestamp.get() - timestamp > 30) { // Error timeout of 30s
-        //   sendLog = current;
-        //   sendLog["status"] = "ERROR_TIMEOUT";
-        //   log = true;
-        //   Serial.println(Timestamp.get());
-        //   Serial.println("errorTimeout");
-        // }
+        if(Timestamp.get() - timestamp > 30) { // Error timeout of 30s
+          sendLog = current;
+          sendLog["status"] = "ERROR_TIMEOUT";
+          log = true;
+          Serial.println(Timestamp.get());
+          Serial.println("errorTimeout");
+        }
 
         // Check if the coffee machine is ready to start a new request
-        if(analogRead(INFRA_PIN) <= 1000 && convertWaterSensorValues() >= 0.1 && !log) {//wtarelevel > 10% avoiding pump to suck in air 
+        if(analogRead(INFRA_PIN) <= 1000 && convertWaterSensorValues() >= 0.1 && !log) {//waterlevel > 10% avoiding pump to suck in air 
           sendRequest["status"] = "WARMING";
         }
         // If there is no cup
@@ -455,7 +454,7 @@ void requestTask(void* parameter) {
         firebaseData.setJson("logs/"+uid+"/"+timestamp,logJson);
 
         // Remove current request //remain to move the next as current and the list[0] to the next
-        firebaseData.setString("requests/"+macAddress+"/current", "null");//.remove("requests/"+macAddress+"/current")
+        firebaseData.setString("requests/"+macAddress+"/current", "null");
       
       }
       else { //send sendRequest for updating the request status
