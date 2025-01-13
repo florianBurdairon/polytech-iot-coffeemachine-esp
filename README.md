@@ -1,6 +1,8 @@
 # Projet IoT : Coffee Machine
 
-> Voici le lien du dépôt Gitlab contenant le rapport complet (README.md) : https://forge.univ-lyon1.fr/fise-24-25-iot/blumet_burdairon_coffeemachine
+![Montage ESP sur la machine](img/coffee_machine.jpg)
+
+> Voici le lien du dépôt GitHub contenant le rapport complet (README.md) : https://github.com/florianBurdairon/polytech-iot-coffeemachine-report
 
 ## Partie microcontrôleur
 ### Liste de matériels utilisé
