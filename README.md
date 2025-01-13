@@ -1,6 +1,6 @@
 # Projet IoT : Coffee Machine
 
-![Montage ESP sur la machine](img/coffee_machine.jpg)
+![Montage ESP sur la machine](coffee_machine.jpg)
 
 > Voici le lien du dépôt GitHub contenant le rapport complet (README.md) : https://github.com/florianBurdairon/polytech-iot-coffeemachine-report
 
